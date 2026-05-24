@@ -11,6 +11,10 @@ implementation. The result is a parser you can read end to end in one
 sitting, vendor in a single file, and trust to fail loudly on the
 weird stuff rather than silently produce surprising structures.
 
+The project now ships a strict quality gate: every push must pass ruff,
+`mypy --strict`, a branch-aware coverage floor, and conformance tests that
+compare supported TOML behavior against `tomllib` / `tomli` reference parsers.
+
 ```python
 import tomlmini
 
@@ -119,6 +123,20 @@ except tomlmini.ParseError as exc:
 If you need a fully spec-compliant parser, use the standard library's
 `tomllib` (Python 3.11+) or [`tomli`](https://pypi.org/project/tomli/).
 
+## Quality bar
+
+`tomlmini` is tested as a parser, not as a toy example:
+
+- Supported TOML v1.0 cases are cross-checked against `tomllib`, with `tomli`
+  as the Python 3.10 compatibility parser.
+- CI runs on Python 3.10, 3.11, and 3.12.
+- `ruff check .` is blocking.
+- `mypy --strict src/tomlmini` is blocking.
+- `pytest --cov=tomlmini --cov-report=term-missing --cov-fail-under=95`
+  is blocking.
+- The repository includes [QUALITY.md](QUALITY.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+  and [SECURITY.md](SECURITY.md) so users can inspect the maintenance bar.
+
 ## Errors
 
 All exceptions inherit from `tomlmini.TomlError`. The parser raises
@@ -143,11 +161,13 @@ All exceptions inherit from `tomlmini.TomlError`. The parser raises
 git clone https://github.com/nripankadas07/tomlmini.git
 cd tomlmini
 pip install -e .[dev]
-pytest -q
+ruff check .
+mypy --strict src/tomlmini
+pytest --cov=tomlmini --cov-report=term-missing --cov-fail-under=95
 ```
 
-The suite ships **136 tests** covering happy paths, edge cases, and
-error reporting, and exercises the parser to ≥95% line coverage.
+The suite ships **157 tests** covering happy paths, edge cases, conformance
+against `tomllib`, and error reporting. Current local coverage is above 97%.
 
 ## License
 

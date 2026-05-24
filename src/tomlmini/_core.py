@@ -26,7 +26,6 @@ from typing import Any
 
 from ._errors import ParseError
 
-
 # ---------------------------------------------------------------------------
 # helpers
 
@@ -299,14 +298,22 @@ class _Parser:
         self._inline.add(path)
         for key, sub in value.items():
             if isinstance(sub, dict):
-                self._mark_inline_recursive(path + (key,), sub)
+                self._mark_inline_recursive((*path, key), sub)
 
     def _forget_descendants(self, prefix: tuple[str, ...]) -> None:
         n = len(prefix)
-        self._direct = {p for p in self._direct if not (len(p) > n and p[:n] == prefix)}
-        self._declared = {p for p in self._declared if not (len(p) > n and p[:n] == prefix)}
-        self._implicit = {p for p in self._implicit if not (len(p) > n and p[:n] == prefix)}
-        self._inline = {p for p in self._inline if not (len(p) > n and p[:n] == prefix)}
+        self._direct = {
+            p for p in self._direct if not (len(p) > n and p[:n] == prefix)
+        }
+        self._declared = {
+            p for p in self._declared if not (len(p) > n and p[:n] == prefix)
+        }
+        self._implicit = {
+            p for p in self._implicit if not (len(p) > n and p[:n] == prefix)
+        }
+        self._inline = {
+            p for p in self._inline if not (len(p) > n and p[:n] == prefix)
+        }
 
     def _assign(self, full_path: tuple[str, ...], value: Any) -> None:
         if full_path in self._direct:
@@ -333,7 +340,11 @@ class _Parser:
                 parent = new_dict
             elif isinstance(existing, dict):
                 parent = existing
-            elif isinstance(existing, list) and existing and isinstance(existing[-1], dict):
+            elif (
+                isinstance(existing, list)
+                and existing
+                and isinstance(existing[-1], dict)
+            ):
                 parent = existing[-1]
             else:
                 raise self.scan.error(
@@ -455,7 +466,9 @@ class _Parser:
         if ch == "U":
             s.advance()
             return self._read_unicode_escape(8)
-        if multiline and (ch == "\n" or ch in " \t" or (ch == "\r" and s.peek(1) == "\n")):
+        if multiline and (
+            ch == "\n" or ch in " \t" or (ch == "\r" and s.peek(1) == "\n")
+        ):
             # Line-ending backslash: skip whitespace including newlines.
             while not s.eof() and s.peek() in " \t\r\n":
                 s.advance()
@@ -465,7 +478,9 @@ class _Parser:
     def _read_unicode_escape(self, width: int) -> str:
         s = self.scan
         digits = s.text[s.pos : s.pos + width]
-        if len(digits) < width or any(c not in "0123456789abcdefABCDEF" for c in digits):
+        if len(digits) < width or any(
+            c not in "0123456789abcdefABCDEF" for c in digits
+        ):
             raise s.error("invalid unicode escape")
         s.advance(width)
         try:
@@ -797,12 +812,7 @@ def loads(text: str) -> dict[str, Any]:
 
     if not isinstance(text, str):
         raise TypeError(f"text must be str, got {type(text).__name__}")
-    parser = _Parser(text)
-    result = parser.parse()
-    # Mark inline tables produced during parsing so future overrides
-    # cannot mutate them; this is already enforced inline, but the
-    # resulting dict is otherwise an ordinary mapping for the caller.
-    return result
+    return _Parser(text).parse()
 
 
-__all__ = ["loads", "_Parser"]
+__all__ = ["_Parser", "loads"]

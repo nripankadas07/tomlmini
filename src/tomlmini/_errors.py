@@ -20,4 +20,4 @@ class ParseError(TomlError):
         super().__init__(f"line {line}, column {col}: {message}")
 
 
-__all__ = ["TomlError", "ParseError"]
+__all__ = ["ParseError", "TomlError"]

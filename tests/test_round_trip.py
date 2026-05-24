@@ -6,7 +6,6 @@ from datetime import date
 
 import tomlmini
 
-
 SAMPLE = """
 # Demo configuration
 

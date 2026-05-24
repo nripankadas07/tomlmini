@@ -28,7 +28,7 @@ def load(
 
     if not isinstance(encoding, str) or not encoding:
         raise TypeError("encoding must be a non-empty str")
-    with open(path, "r", encoding=encoding) as handle:
+    with open(path, encoding=encoding) as handle:
         text = handle.read()
     return loads(text)
 
@@ -38,7 +38,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ParseError",
     "TomlError",
+    "__version__",
     "load",
     "loads",
-    "__version__",
 ]
