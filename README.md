@@ -43,7 +43,7 @@ assert [h["name"] for h in config["hooks"]] == ["lint", "test"]
 ## Install
 
 ```bash
-pip install tomlmini
+python -m pip install -e .
 ```
 
 `tomlmini` requires Python 3.10+ and has zero runtime dependencies.

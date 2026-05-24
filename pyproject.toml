@@ -61,6 +61,7 @@ select = ["B", "C4", "E", "F", "I", "N", "PERF", "PYI", "RET", "RUF", "SIM", "UP
 
 [tool.mypy]
 python_version = "3.10"
+files = ["src/tomlmini"]
 strict = true
 warn_unreachable = true
 
