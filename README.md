@@ -1,174 +1,66 @@
 # tomlmini
 
-A small, zero-dependency parser for the **common subset** of TOML v1.0.
+A small, readable TOML common-subset parser that rejects ambiguous edges loudly.
 
-`tomlmini` covers what almost every real-world `*.toml` config file
-needs — keys/values, tables, sub-tables, arrays, arrays of tables,
-inline tables, all four string flavours, the full numeric grammar
-(decimal, hex, octal, binary, with `_` separators) and offset / local
-date and time values — without trying to be a fully spec-compliant
-implementation. The result is a parser you can read end to end in one
-sitting, vendor in a single file, and trust to fail loudly on the
-weird stuff rather than silently produce surprising structures.
+**Thesis:** a config parser can be useful even when it does not chase every
+corner of a format. `tomlmini` covers the TOML shapes most projects actually
+use and makes unsupported ambiguity explicit.
 
-The project now ships a strict quality gate: every push must pass ruff,
-`mypy --strict`, a branch-aware coverage floor, and conformance tests that
-compare supported TOML behavior against `tomllib` / `tomli` reference parsers.
+## Run It In 30 Seconds
+
+```bash
+python -m pip install -e ".[dev]" && python examples/parse_config.py
+```
+
+## Why Care?
+
+- You want a reference-quality parser small enough to read.
+- You want conformance checks against `tomllib` for supported shapes.
+- You prefer explicit parse errors over silent table/key merging surprises.
+
+## Example
 
 ```python
 import tomlmini
 
-config = tomlmini.loads("""
-title = "Forge Pipeline"
-
+config = tomlmini.loads('''
+title = "demo"
 [server]
-host = "db.internal"
-port = 5432
-options = { pool = 16, timeout = 30.0 }
-
-[[hooks]]
-name = "lint"
-cmd  = "ruff check ."
-
-[[hooks]]
-name = "test"
-cmd  = "pytest -q"
-""")
-
-assert config["title"] == "Forge Pipeline"
-assert config["server"]["options"]["pool"] == 16
-assert [h["name"] for h in config["hooks"]] == ["lint", "test"]
+port = 8080
+''')
+assert config["server"]["port"] == 8080
 ```
 
-## Install
+## Architecture
+
+```mermaid
+flowchart LR
+    Text --> Parser
+    Parser --> Values
+    Parser --> Tables
+    Tables --> DuplicateChecks
+    DuplicateChecks --> Dict
+```
+
+## Supported
+
+Tables, dotted keys, arrays of tables, inline tables, strings, booleans,
+integers, floats, dates, times, and datetimes for the common TOML 1.0 subset.
+
+## Limitations
+
+- Parser only; no `dumps`.
+- Not a full TOML replacement.
+- Ambiguous dotted-key/table-header edge cases are rejected rather than merged.
+
+## Development
 
 ```bash
-python -m pip install -e .
-```
-
-`tomlmini` requires Python 3.10+ and has zero runtime dependencies.
-
-## Public API
-
-```python
-import tomlmini
-
-tomlmini.loads(text: str) -> dict[str, Any]
-tomlmini.load(path: str | os.PathLike, *, encoding: str = "utf-8") -> dict[str, Any]
-
-tomlmini.TomlError       # base class
-tomlmini.ParseError      # subclass; carries .line and .col
-```
-
-### `loads(text)`
-
-Parse a TOML document from a string and return the result as a
-nested `dict`. Raises `ParseError` with a 1-based line/column on any
-syntax problem.
-
-### `load(path, *, encoding="utf-8")`
-
-Convenience wrapper around `loads`: reads the file at *path* with the
-given text encoding and parses it. Raises `OSError` if the file
-cannot be opened.
-
-### `ParseError`
-
-Subclass of `TomlError`. Exposes `.line` and `.col` (both 1-based) so
-callers can report a meaningful location:
-
-```python
-try:
-    tomlmini.loads(text)
-except tomlmini.ParseError as exc:
-    print(f"bad config at {exc.line}:{exc.col}: {exc}")
-```
-
-## Supported TOML features
-
-| Feature                                | Status |
-| -------------------------------------- | ------ |
-| Comments                               | ✓      |
-| Bare and quoted keys                   | ✓      |
-| Dotted keys (`a.b.c = 1`)              | ✓      |
-| Basic strings (`"..."`)                | ✓      |
-| Literal strings (`'...'`)              | ✓      |
-| Multi-line basic strings               | ✓      |
-| Multi-line literal strings             | ✓      |
-| Standard escapes (`\n`, `\t`, `\u`, `\U`) | ✓   |
-| Line-ending backslash trim             | ✓      |
-| Decimal / hex / octal / binary ints    | ✓      |
-| `_` separators in numeric literals     | ✓      |
-| Floats with exponent / `inf` / `nan`   | ✓      |
-| Booleans                               | ✓      |
-| Local date / time / datetime           | ✓      |
-| Offset datetime (`Z` and `±HH:MM`)     | ✓      |
-| Arrays (mixed types, nested)           | ✓      |
-| Inline tables                          | ✓      |
-| Tables (`[name]`)                      | ✓      |
-| Arrays of tables (`[[name]]`)          | ✓      |
-| Inline-table immutability              | ✓      |
-| Duplicate-key / table-redefinition checks | ✓   |
-
-### Non-goals
-
-`tomlmini` deliberately does *not* try to:
-
-- Round-trip TOML (parser only — no `dumps`).
-- Resolve every pathological dotted-key + table-header interaction
-  the full TOML 1.0 spec normalises away. It rejects the ambiguous
-  cases instead of silently merging.
-- Provide async / streaming parsing.
-
-If you need a fully spec-compliant parser, use the standard library's
-`tomllib` (Python 3.11+) or [`tomli`](https://pypi.org/project/tomli/).
-
-## Quality bar
-
-`tomlmini` is tested as a parser, not as a toy example:
-
-- Supported TOML v1.0 cases are cross-checked against `tomllib`, with `tomli`
-  as the Python 3.10 compatibility parser.
-- CI runs on Python 3.10, 3.11, and 3.12.
-- `ruff check .` is blocking.
-- `mypy --strict src/tomlmini` is blocking.
-- `pytest --cov=tomlmini --cov-report=term-missing --cov-fail-under=95`
-  is blocking.
-- The repository includes [QUALITY.md](QUALITY.md), [CONTRIBUTING.md](CONTRIBUTING.md),
-  and [SECURITY.md](SECURITY.md) so users can inspect the maintenance bar.
-
-## Errors
-
-All exceptions inherit from `tomlmini.TomlError`. The parser raises
-`tomlmini.ParseError` on any of:
-
-- Unterminated string literals (single-line or multi-line).
-- Invalid escape sequences (`\q`, `\u12`, etc.).
-- Newlines inside single-line strings.
-- Numeric literals with leading zeros, double underscores, or
-  trailing underscores.
-- Invalid date / time / datetime tokens.
-- Duplicate keys at the same scope.
-- Redefining an already-declared table.
-- Extending an inline table with a later `[name]` header or dotted
-  key assignment.
-- Arrays missing commas or closing brackets; inline tables with
-  trailing commas.
-
-## Running tests
-
-```bash
-git clone https://github.com/nripankadas07/tomlmini.git
-cd tomlmini
-pip install -e .[dev]
+python -m pip install -e ".[dev]"
 ruff check .
 mypy --strict src/tomlmini
-pytest --cov=tomlmini --cov-report=term-missing --cov-fail-under=95
+pytest
+python scripts/conformance_smoke.py
 ```
 
-The suite ships **157 tests** covering happy paths, edge cases, conformance
-against `tomllib`, and error reporting. Current local coverage is above 97%.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [TECHNICAL_ARTICLE.md](docs/TECHNICAL_ARTICLE.md), and [RELEASE.md](RELEASE.md).
